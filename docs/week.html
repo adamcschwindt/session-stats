@@ -1,0 +1,23 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Session Stats – This Week</title><link rel="stylesheet" href="style.css"></head><body>
+<header class="top"><b>SESSION STATS</b><a href="index.html">Cards</a><a href="stats.html">Key stats</a><a class="on" href="week.html">This week</a><span class="meta" id="meta"></span></header>
+<div class="wrap"><div class="panel"><h2>This week, day by day</h2>
+<div class="note">Squares left to right: O/N done · IB done · Closing % · 30m close · Set first · Alignment. <span class="sq s-right"></span> right <span class="sq s-wrong"></span> wrong <span class="sq s-none"></span> no call / no touch. Amber = both IB sides touched.</div>
+<div style="overflow-x:auto"><table class="wk" id="wk"></table></div></div>
+<div class="panel"><h2>How each market has behaved: hit rate over the last 20 and 60 sessions</h2>
+<div class="note">Light bar = last 20 sessions, dark bar = last 60. Black tick = the historical rate (2016-now).</div>
+<div style="overflow-x:auto"><table class="wk" id="hr"></table></div></div></div>
+<script>
+const sq=c=>`<span class="sq s-${c}"></span>`;
+const hb=(v20,v60,exp)=>`<div class="hb"><div class="t"><div class="f f20" style="width:${v20||0}%"></div>${exp!=null?`<div class="x" style="left:${exp}%"></div>`:""}</div><span>${v20==null?"–":v20+"%"}</span></div>
+ <div class="hb"><div class="t"><div class="f f60" style="width:${v60||0}%"></div>${exp!=null?`<div class="x" style="left:${exp}%"></div>`:""}</div><span>${v60==null?"–":v60+"%"}</span></div>`;
+fetch("data/week.json",{cache:"no-store"}).then(r=>r.json()).then(j=>{
+  const S=["Closing %","30m close","Set first","Alignment"];
+  document.getElementById("wk").innerHTML=`<tr><th></th>${j.days.map(d=>`<th>${d}</th>`).join("")}<th>Week: right / scored</th></tr>`+
+   j.markets.map(m=>`<tr><td class="l"><b>${m.sym}</b><br><span class="fair">${m.ib}</span></td>`+m.cells.map(c=>c?`<td><div class="${c.both?"amber":""}" style="font-size:11px">${c.label}</div>${sq(c.on_done?"done":"open")}${sq(c.ib_done?"done":"open")}${S.map(s=>sq(c.marks[s])).join("")}</td>`:`<td class="fair">–</td>`).join("")+
+   `<td class="l" style="font-size:11px">${S.map(s=>`${s} ${m.totals[s][0]}/${m.totals[s][1]}`).join(" · ")}</td></tr>`).join("");
+  const H=[["on_done","O/N stat done"],["ib_done","IB stat done"],["Closing %","Closing %"],["30m close","30m close"],["Set first","Set first"],["Alignment","Alignment"],["one_side","One side only"]];
+  document.getElementById("hr").innerHTML=`<tr><th></th>${H.map(h=>`<th>${h[1]}</th>`).join("")}</tr>`+
+   j.markets.map(m=>`<tr><td class="l"><b>${m.sym}</b><br><span class="fair">${m.n20}/${m.n60} sessions</span></td>${H.map(h=>`<td>${hb(m.last20[h[0]],m.last60[h[0]],m.expected[h[0]])}</td>`).join("")}</tr>`).join("");
+  document.getElementById("meta").textContent="updated "+j.updated});
+</script></body></html>

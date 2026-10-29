@@ -1,0 +1,17 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Session Key Stats</title><link rel="stylesheet" href="style.css"></head><body>
+<header class="top"><b>SESSION STATS</b><a href="index.html">Cards</a><a class="on" href="stats.html">Key stats</a><a href="week.html">This week</a><span class="meta" id="meta"></span></header>
+<div class="wrap"><div class="panel"><h1>Session key stats</h1><div style="overflow-x:auto"><table class="st" id="t"></table></div>
+<div class="note" id="note"></div></div></div>
+<script>
+const shade=v=>{if(v==null)return"";const a=Math.max(0,Math.min(1,(v-10)/80));const r=Math.round(229-(229-76)*a),g=Math.round(115+(178-115)*a),b=Math.round(115+(115-115)*a);
+  return v>=50?`background:rgba(47,158,90,${0.15+0.6*(v-50)/50})`:`background:rgba(217,58,58,${0.15+0.5*(50-v)/50})`};
+const cell=(v,fv)=>`<td style="${shade(v)}">${v==null?"–":v+"%"}${fv!=null?`<div class="fair">random ${fv}%</div>`:""}</td>`;
+fetch("data/stats.json",{cache:"no-store"}).then(r=>r.json()).then(j=>{
+  document.getElementById("t").innerHTML=`<tr><th colspan="2"></th><th colspan="3">1. Overnight high / low<br>touched during session</th><th colspan="3">2. IB high / low<br>touched after IB formed</th><th colspan="2">3. IB side touched first<br>after IB formed</th><th colspan="2">4. As 3, plus IB close<br>beyond the midpoint</th></tr>
+  <tr><th class="sub">Symbol</th><th class="sub">Session</th><th class="sub">One side only</th><th class="sub">Both</th><th class="sub">Neither</th><th class="sub">One side only</th><th class="sub">Both</th><th class="sub">Neither</th>
+  <th class="sub">IB low formed first:<br>high touched first</th><th class="sub">IB high formed first:<br>low touched first</th><th class="sub">Low first, close &ge; mid:<br>high touched first</th><th class="sub">High first, close &lt; mid:<br>low touched first</th></tr>`+
+  j.rows.map(r=>`<tr><td class="l"><b>${r.sym}</b></td><td class="l">${r.session}</td>${cell(r.on_one)}${cell(r.on_both)}${cell(r.on_neither)}${cell(r.ib_one,r.f_ib_one)}${cell(r.ib_both,r.f_ib_both)}${cell(r.ib_neither,r.f_ib_neither)}${cell(r.low_first,r.f_low_first)}${cell(r.high_first,r.f_high_first)}${cell(r.low_first_mid,r.f_low_first_mid)}${cell(r.high_first_mid,r.f_high_first_mid)}</tr>`).join("");
+  document.getElementById("note").innerHTML=`Since ${j.since}, 1-minute bars, touched = traded 1 tick beyond. Overnight = previous session close to the session open. <b>random</b> = what a market with no memory gives from the same IB close, IB range, typical afternoon volatility and time left: most of each percentage comes from where price sits inside the IB, and only the gap above "random" is information. Updated ${j.updated}.`;
+  document.getElementById("meta").textContent="updated "+j.updated});
+</script></body></html>

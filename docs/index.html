@@ -1,0 +1,56 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Session Stats</title><link rel="stylesheet" href="style.css"></head><body>
+<header class="top"><b>SESSION STATS</b><a class="on" href="index.html">Cards</a><a href="stats.html">Key stats</a><a href="week.html">This week</a>
+<span class="meta" id="meta"></span></header>
+<div class="grid" id="grid"></div>
+<script>
+const f=(x,d)=>x==null?"–":Number(x).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+const dec=t=>{const s=String(t);const k=s.includes(".")?s.split(".")[1].length:0;return Math.max(2,k)};
+const sgn=(x,d)=>x==null?"–":(x>=0?"+":"")+f(x,d);
+function bar(title,lo,hi,last,d,note){
+  if(lo==null||hi==null||hi<=lo) return `<div class="bart">${title}</div><div class="bar"><div class="track"></div></div>`;
+  let p=(last-lo)/(hi-lo),arrow="";if(p<0){arrow='<div class="arr l"></div>';p=0}else if(p>1){arrow='<div class="arr r"></div>';p=1}
+  const lab=arrow?`<div class="mkl" style="left:${p<0.5?6:94}%">${f(last,d)}</div>`:`<div class="mkl" style="left:${p*100}%">${f(last,d)}</div><div class="mk" style="left:calc(${p*100}% - 1px)"></div>`;
+  return `<div class="bart">${title}${note?` <span class="fair">(${note})</span>`:""}</div><div class="bar"><div class="track"></div>${arrow}${lab}<div class="lo">${f(lo,d)}</div><div class="hi">${f(hi,d)}</div></div>`}
+function card(c){
+  const d=dec(c.tick),pct=(a,b)=>a!=null&&b?Math.round(a/b*100)+"%":"–";
+  let o30=c.o30==null?'<span class="dot" style="background:#ccc"></span><span class="flat">Opening 30m: pending</span>':
+    (c.o30>=0?`<span class="dot" style="background:#2f9e5a"></span><span class="up">Opening 30m closed green (${sgn(c.o30,2)})</span>`:
+              `<span class="dot" style="background:#d93a3a"></span><span class="down">Opening 30m closed red (${sgn(c.o30,2)})</span>`);
+  const onIco=c.on_line.startsWith("Broke above")?"↑":c.on_line.startsWith("Broke below")?"↓":"↔";
+  const breach=(s,nm)=>s&&s.trim()?` (breached ${s.trim().replace(" "," & ")} today)`:"";
+  const sf=c.set_first?`${c.set_first=="low"?"Low":"High"} first (${c.set_first_time}) · leans ${c.set_first=="low"?"bullish":"bearish"}`:"–";
+  let ibp="–";if(c.ib_pos!=null){const up=c.ib_pos>=0.5,h=c.ib_hist_high_first,fr=c.ib_fair_high_first;
+    const ph=up?h:(h==null?null:1-h),pf=up?fr:(fr==null?null:1-fr);
+    ibp=`${Math.round(c.ib_pos*100)}% up the IB → IB ${up?"high":"low"} likely tested first (~${ph==null?"?":Math.round(ph*100)}%${pf!=null?`, random ${Math.round(pf*100)}%`:""})`}
+  const ibstat=c.ib_done?((c.ib_touched_high||c.ib_touched_low)?"Complete":"Open"):"IB forming";
+  const onstat=(c.on_touched_high||c.on_touched_low)?"Complete":(c.session_open?"Open":"Pre-open");
+  const al=c.align_side;
+  return `<div class="card"><div class="logo">SESSION STATS</div><div class="body">
+  <div class="row1"><span class="sym">${c.sym}</span><span class="status ${c.status_side}">${c.status}</span></div>
+  <div class="upd">Updated ${c.updated}${c.live_age_s!=null?` · live ${Math.max(0,Math.round(c.live_age_s))}s`:""}</div>
+  <div class="line">${o30}</div><div class="line"><span class="ico">${onIco}</span><span style="color:#555">${c.on_line}</span></div>
+  ${bar("Overnight range"+breach(c.on_breached),c.on_low,c.on_high,c.last,d)}
+  ${bar("Yesterday range"+breach(c.yday_breached),c.yday_low,c.yday_high,c.last,d)}
+  ${bar("Initial Balance (60m) range"+(c.ib_done?"":" – forming"),c.ib_low,c.ib_high,c.last,d)}
+  <table class="kv">
+  <tr><td>Globex range</td><td>${f(c.globex_range,d)} vs ${f(c.globex_atr,d)} ATR (${pct(c.globex_range,c.globex_atr)})</td></tr>
+  <tr><td>O/N Hi/Lo Stat</td><td>${onstat}</td></tr>
+  <tr><td>RTH range</td><td>${c.rth_range==null?"–":`${f(c.rth_range,d)} vs ${f(c.rth_atr,d)} ATR (${pct(c.rth_range,c.rth_atr)})`}</td></tr>
+  <tr><td>RTH Volume (RVOL)</td><td>${c.rth_vol==null?"–":`${f(c.rth_vol,0)} (${c.rvol==null?"–":c.rvol.toFixed(2)+"x avg"})`}</td></tr>
+  <tr><td>IB range</td><td>${c.ib_range==null?"–":`${f(c.ib_range,d)} vs ${f(c.ib_atr,d)} ATR (${pct(c.ib_range,c.ib_atr)})`}</td></tr>
+  <tr><td>IB Hi/Lo Stat</td><td>${ibstat}</td></tr>
+  <tr><td>IB set first</td><td>${sf}</td></tr>
+  <tr><td>IB position</td><td>${ibp}</td></tr></table></div>
+  <div class="boxes"><div class="box ${c.session_change>=0?"pos":"neg"}"><div class="k">Session change</div><div class="v">${sgn(c.session_change,d)} (${sgn(c.session_change_pct*100,2)}%)</div></div>
+  <div class="box ${(c.since_open||0)>=0?"pos":"neg"}"><div class="k">Since cash open</div><div class="v">${c.since_open==null?"–":`${sgn(c.since_open,d)} (${sgn(c.since_open_pct*100,2)}%)`}</div></div></div>
+  <div class="align al-${al}"><div class="k">Alignment</div><div class="v">${al=="mixed"?"Mixed":al[0].toUpperCase()+al.slice(1)+" alignment"} (${c.align_txt})</div></div></div>`}
+async function tick(){
+  try{const r=await fetch("data/cards.json",{cache:"no-store"});const j=await r.json();
+    const order=["ES","NQ","RTY","YM","GC","CL"];
+    document.getElementById("grid").innerHTML=order.filter(s=>j.cards[s]).map(s=>card(j.cards[s])).join("")||'<div class="panel">No market data yet — waiting for the NinjaTrader exporter.</div>';
+    document.getElementById("meta").textContent=(j.live?"live · computed "+j.computed+(j.live_at?" · feed "+j.live_at.slice(11):""):"snapshot "+(j.computed||""))+(j.errors&&j.errors.length?" · "+j.errors.slice(-1)[0]:"");
+    if(!j.live) return; }catch(e){document.getElementById("meta").textContent="no connection to the data server"}
+  setTimeout(tick,1000)}
+tick();
+</script></body></html>
