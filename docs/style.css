@@ -39,3 +39,19 @@ table.wk td.l{text-align:left}.amber{color:#d9822b}
 .hb .f{position:absolute;left:0;top:0;bottom:0;border-radius:5px}.hb .x{position:absolute;top:-3px;width:2px;height:15px;background:#111}
 .f20{background:#7cc58f}.f60{background:#2e6b45}
 @media (max-width:600px){.grid{grid-template-columns:1fr;padding:10px}.wrap{padding:10px}table.st{font-size:11px}}
+
+/* day bias + leads (2026-11-11) */
+.bias{padding:10px 20px 12px;border-top:1px solid #e6e8eb}.bias .k{color:#555;font-size:12px}.bias .v{font-size:13.5px;margin:3px 0 6px}
+.lead{font-size:12.5px;padding:5px 8px;margin-top:5px;border-radius:4px;line-height:1.45}.lead.act{background:#fff4d6;border-left:3px solid #e0a100}
+.lead.arm{background:#eef3fb;border-left:3px solid #6b8fd6;color:#333}.lead.none{color:#888;padding-left:0}.tiny{color:#888;font-size:11px;margin-top:6px}
+table.lg{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px}table.lg th,table.lg td{text-align:left;padding:3px 8px 3px 0;border-bottom:1px solid #eee}table.lg th{color:#555;font-weight:600}
+
+/* no-longs / no-shorts flags (2026-11-11) */
+.flag{font-size:12.5px;padding:6px 9px;margin:6px 0 2px;border-radius:4px;line-height:1.4}.flag.stop{background:#fde8e8;border-left:4px solid #d93a3a;color:#7a1f1f}
+.flag.warn{background:#fff4d6;border-left:4px solid #e0a100;color:#5c4500}.flag.ok{color:#7a8794;padding-left:0;font-size:11.5px}
+
+/* 2026-11-12 clearer banners: the side that is blocked is the first thing on the card */
+.flag.stop{background:#d93a3a;border-left:0;color:#fff;padding:9px 12px}.flag.stop .big{font-size:20px;font-weight:800;letter-spacing:.6px;line-height:1.15}
+.flag.stop .why{font-size:12.5px;opacity:.95;margin-top:2px}
+.flag.ok{background:#eaf6ee;color:#2f7d4f;padding:7px 12px;font-size:13px;font-weight:700;letter-spacing:.3px}
+.flag.note{background:#eef1f5;border-left:4px solid #8a97a6;color:#3d4955;font-size:12px}

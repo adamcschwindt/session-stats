@@ -3,6 +3,7 @@
 <header class="top"><b>SESSION STATS</b><a class="on" href="index.html">Cards</a><a href="stats.html">Key stats</a><a href="week.html">This week</a>
 <span class="meta" id="meta"></span></header>
 <div class="grid" id="grid"></div>
+<div class="wrap" id="leads"></div>
 <script>
 const f=(x,d)=>x==null?"–":Number(x).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
 const dec=t=>{const s=String(t);const k=s.includes(".")?s.split(".")[1].length:0;return Math.max(2,k)};
@@ -29,6 +30,7 @@ function card(c){
   return `<div class="card"><div class="logo">SESSION STATS</div><div class="body">
   <div class="row1"><span class="sym">${c.sym}</span><span class="status ${c.status_side}">${c.status}</span></div>
   <div class="upd">Updated ${c.updated}${c.live_age_s!=null?` · live ${Math.max(0,Math.round(c.live_age_s))}s`:""}</div>
+  ${flagBlock(c,d)}
   <div class="line">${o30}</div><div class="line"><span class="ico">${onIco}</span><span style="color:#555">${c.on_line}</span></div>
   ${bar("Overnight range"+breach(c.on_breached),c.on_low,c.on_high,c.last,d)}
   ${bar("Yesterday range"+breach(c.yday_breached),c.yday_low,c.yday_high,c.last,d)}
@@ -41,15 +43,56 @@ function card(c){
   <tr><td>IB range</td><td>${c.ib_range==null?"–":`${f(c.ib_range,d)} vs ${f(c.ib_atr,d)} ATR (${pct(c.ib_range,c.ib_atr)})`}</td></tr>
   <tr><td>IB Hi/Lo Stat</td><td>${ibstat}</td></tr>
   <tr><td>IB set first</td><td>${sf}</td></tr>
-  <tr><td>IB position</td><td>${ibp}</td></tr></table></div>
+  <tr><td>IB position</td><td>${ibp}</td></tr>${atrRows(c,d)}</table></div>
   <div class="boxes"><div class="box ${c.session_change>=0?"pos":"neg"}"><div class="k">Session change</div><div class="v">${sgn(c.session_change,d)} (${sgn(c.session_change_pct*100,2)}%)</div></div>
   <div class="box ${(c.since_open||0)>=0?"pos":"neg"}"><div class="k">Since cash open</div><div class="v">${c.since_open==null?"–":`${sgn(c.since_open,d)} (${sgn(c.since_open_pct*100,2)}%)`}</div></div></div>
-  <div class="align al-${al}"><div class="k">Alignment</div><div class="v">${al=="mixed"?"Mixed":al[0].toUpperCase()+al.slice(1)+" alignment"} (${c.align_txt})</div></div></div>`}
+  <div class="align al-${al}"><div class="k">Alignment</div><div class="v">${al=="mixed"?"Mixed":al[0].toUpperCase()+al.slice(1)+" alignment"} (${c.align_txt})</div>${c.align_why?`<div class="tiny">${c.align_why}</div>`:""}</div>${biasBlock(c,d)}</div>`}
+function atrRows(c,d){
+  // session ATR = average true range of the last 14 full sessions (18:00-17:00 ET): the unit behind the no-trade flags and the stop rule
+  const g=c.flags;if(!g||(!g.atr&&!g.proj)) return "";
+  const pv={ES:5,NQ:2,YM:0.5,RTY:5}[c.sym],mic={ES:"MES",NQ:"MNQ",YM:"MYM",RTY:"M2K"}[c.sym];
+  // working stop = 12% of the projected day range (2026-11-12, neg_edge/stop_adaptive.py: the only size not negative in all three periods of Adam's entries; under 5% lost everywhere)
+  const st=g.proj?Math.round(0.12*g.proj.value/c.tick)*c.tick:null;
+  // projected day range: median of the 5/10/20-session average ranges, blended with today's range so far at 08:00, 09:30, 10:00, 10:30 ET, then locked
+  const p=g.proj,pr=p?`<tr><td>Projected day range</td><td><b>${f(p.value,d)}</b> pts (${p.locked?"locked 10:30":p.asof=="prior days only"?"prior days only · updates 08:00":"as of "+p.asof+" · updates to 10:30"})</td></tr>
+  <tr><td>Projected high / low</td><td>${f(p.low+p.value,d)} / ${f(p.high-p.value,d)}</td></tr>
+  <tr><td>Base range (median of 5/10/20 days)</td><td>${f(p.base,d)}</td></tr>`:"";
+  if(!g.atr) return pr;
+  return `${pr}<tr><td>Session ATR (14 full sessions)</td><td>${f(g.atr,d)}</td></tr>
+  ${st==null?"":`<tr><td>Stop (12% of projected range)</td><td>${f(st,d)} pts${pv?` · $${f(st*pv,0)} per ${mic}`:""}${g.proj.locked?"":" · moves until 10:30"}</td></tr>`}`}
+function flagBlock(c,d){
+  const g=c.flags;if(!g||g.proj_only) return "";
+  // big label first, one reason per line under it
+  const one=(lab,arr)=>arr&&arr.length?`<div class="flag stop"><div class="big">${lab}</div>${arr.map(x=>`<div class="why">${x.text}${x.release!=null?` · until ${x.release_text} (${f(x.release,d)})`:""}</div>`).join("")}</div>`:"";
+  const ca=g.caution&&g.caution.length?`<div class="flag warn">Caution — ${g.caution.map(x=>x.text).join("; ")}</div>`:"";
+  const pm=g.afternoon?`<div class="flag note">${g.afternoon}</div>`:"";
+  const out=one("NO LONGS",g.no_longs)+one("NO SHORTS",g.no_shorts)+ca;
+  return (out||'<div class="flag ok">BOTH SIDES OPEN</div>')+pm}
+function biasBlock(c,d){
+  if(c.leads===undefined) return "";
+  const gap=c.gap_pct==null?"":` · gap ${sgn(c.gap_pct*100,0)}% of ATR`;
+  const b=c.bias?`<span class="${c.bias=="long"?"up":"down"}">${c.bias=="long"?"Long":"Short"}</span> — IB closed ${c.bias=="long"?"above":"below"} the cash open; entries ${c.bias=="long"?"short":"long"} are the costly side`
+               :(c.ib_done?"None (IB closed at the open)":"Pending until the IB closes");
+  const ls=(c.leads||[]).map(l=>l.state=="active"
+    ?`<div class="lead act"><b>${l.id} · ${l.name}</b> — ${l.side.toUpperCase()} at ${l.time}<br>entry ${f(l.entry,d)} · target ${f(l.target,d)}${l.tmult?` (${l.tmult}x range)`:""} · stop ${f(l.stop,d)}</div>`
+    :`<div class="lead arm"><b>${l.id} · ${l.name}</b> — ${l.state}: ${l.note}</div>`).join("");
+  return `<div class="bias"><div class="k">Day bias${gap}</div>${c.gap_txt?`<div class="tiny">${c.gap_txt}</div>`:""}<div class="v">${b}</div>${ls||'<div class="lead none">No lead active</div>'}<div class="tiny">Leads are unproven and logged forward.</div></div>`}
+function leadsTable(j){
+  if(!j||!j.rows) return "";
+  const t=(j.tallies||[]).map(x=>`<tr><td>${x.lead} · ${x.name}</td><td>${x.sym}</td><td>${x.n}</td><td>${x.wins}</td><td>${sgn(x.pts,2)}</td><td>${sgn(x.avg,2)}</td></tr>`).join("");
+  const r=j.rows.map(x=>`<tr><td>${x.date}</td><td>${x.sym}</td><td>${x.lead}</td><td>${x.side}</td><td>${x.trigger_time}${x.late=="1"?" (late)":""}</td><td>${x.entry}</td><td>${x.target}</td><td>${x.stop}</td><td>${x.result||"open"}</td><td>${x.pts===""?"":sgn(Number(x.pts),2)}</td></tr>`).join("");
+  return `<div class="panel"><b>Forward log — continuation leads</b><div class="tiny">${j.note}</div>
+  ${t?`<table class="lg"><tr><th>Lead</th><th>Market</th><th>Resolved</th><th>Winners</th><th>Total pts</th><th>Avg pts</th></tr>${t}</table>`:""}
+  ${r?`<table class="lg"><tr><th>Date</th><th>Mkt</th><th>Lead</th><th>Side</th><th>Trigger</th><th>Entry</th><th>Target</th><th>Stop</th><th>Result</th><th>Pts</th></tr>${r}</table>`:'<div class="tiny">No triggers logged yet.</div>'}</div>`}
+let leadsAt=0;
+async function loadLeads(){
+  try{const r=await fetch("data/leads.json",{cache:"no-store"});if(!r.ok) return;document.getElementById("leads").innerHTML=leadsTable(await r.json())}catch(e){}}
 async function tick(){
   try{const r=await fetch("data/cards.json",{cache:"no-store"});const j=await r.json();
     const order=["ES","NQ","RTY","YM","GC","CL"];
     document.getElementById("grid").innerHTML=order.filter(s=>j.cards[s]).map(s=>card(j.cards[s])).join("")||'<div class="panel">No market data yet — waiting for the NinjaTrader exporter.</div>';
     document.getElementById("meta").textContent=(j.live?"live · computed "+j.computed+(j.live_at?" · feed "+j.live_at.slice(11):""):"snapshot "+(j.computed||""))+(j.errors&&j.errors.length?" · "+j.errors.slice(-1)[0]:"");
+    if(Date.now()-leadsAt>30000){leadsAt=Date.now();loadLeads()}
     if(!j.live) return; }catch(e){document.getElementById("meta").textContent="no connection to the data server"}
   setTimeout(tick,1000)}
 tick();
